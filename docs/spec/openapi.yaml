@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
   version: 1.0.0
-  title: 
+  title: slug-svc
   description: ''
 servers:
-  - url: 'https://api.demo.tokend.io'
-    description: TokenD Developer Environment
+  - url: 'https://localhost:8080'
+    description: Slug Service Local

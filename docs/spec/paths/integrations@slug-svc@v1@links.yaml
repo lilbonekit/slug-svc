@@ -1,0 +1,32 @@
+post:
+  tags:
+    - Links
+  summary: Create new short link
+  operationId: createLink
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            target_url:
+              type: string
+              example: 'https://solarity.dev'
+            slug:
+              type: string
+              example: 'custom-slug'
+            ttl:
+              type: integer
+              example: 3600
+  responses:
+    '200':
+      description: Successful creation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Link'
+    '409':
+      description: Slug already exists
+    '500':
+      description: Internal server error

@@ -3,10 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/lilbonekit/slug-svc/internal/service/repo"
 	"gitlab.com/distributed_lab/kit/pgdb"
+	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type linksRepo struct {
@@ -30,6 +33,10 @@ func (r *linksRepo) Create(ctx context.Context, l repo.Link) (repo.Link, error) 
 
 	var out repo.Link
 	if err := r.db.GetContext(ctx, &out, q); err != nil {
+		if strings.Contains(err.Error(), "duplicate key") {
+			return repo.Link{}, repo.ErrSlugExists
+
+		}
 		return repo.Link{}, err
 	}
 	return out, nil
@@ -50,4 +57,33 @@ func (r *linksRepo) GetBySlug(ctx context.Context, slug string) (repo.Link, erro
 		return repo.Link{}, err
 	}
 	return out, nil
+}
+
+func (r *linksRepo) DeleteExpired(ctx context.Context) error {
+	q := r.sb.
+		Delete("links").
+		Where("ttl IS NOT NULL").
+		Where("(created_at + make_interval(secs => ttl)) < now()")
+
+	return r.db.ExecContext(ctx, q)
+}
+
+func (r *linksRepo) StartTTLWatcher(ctx context.Context, log *logan.Entry, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := r.DeleteExpired(ctx); err != nil {
+					log.WithError(err).Error("failed to delete expired links")
+				} else {
+					log.Info("expired links removed successfully")
+				}
+			case <-ctx.Done():
+				ticker.Stop()
+				log.Info("ttl watcher stopped")
+				return
+			}
+		}
+	}()
 }

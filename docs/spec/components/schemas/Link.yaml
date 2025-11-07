@@ -1,0 +1,30 @@
+type: object
+required:
+  - attributes
+properties:
+  id:
+    type: string
+    example: 'abc123'
+  type:
+    type: string
+    enum: [link]
+  attributes:
+    type: object
+    required:
+      - slug
+      - target_url
+    properties:
+      slug:
+        type: string
+        example: 'aB4pQk'
+      target_url:
+        type: string
+        example: 'https://solarity.dev'
+      created_at:
+        type: string
+        format: date-time
+        example: '2025-11-05T10:29:34Z'
+      ttl:
+        type: integer
+        nullable: true
+        example: 3600

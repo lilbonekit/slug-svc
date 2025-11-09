@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -20,7 +21,13 @@ func (h *Handlers) ResolveLink(w http.ResponseWriter, r *http.Request) {
 
 	link, err := h.LinksRepo.GetBySlug(r.Context(), slug)
 	if err != nil {
-		ape.RenderErr(w, []*jsonapi.ErrorObject{problems.NotFound()}...)
+		if errors.Is(err, sql.ErrNoRows) {
+			ape.RenderErr(w, []*jsonapi.ErrorObject{problems.NotFound()}...)
+			return
+		}
+
+		Log(r).WithError(err).Error("failed to get link")
+		ape.RenderErr(w, []*jsonapi.ErrorObject{problems.InternalError()}...)
 		return
 	}
 

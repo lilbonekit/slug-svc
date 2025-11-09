@@ -3,6 +3,8 @@ package repo
 import (
 	"context"
 	"time"
+
+	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Link struct {
@@ -15,4 +17,5 @@ type Link struct {
 type LinksRepo interface {
 	Create(ctx context.Context, l Link) (Link, error)
 	GetBySlug(ctx context.Context, slug string) (Link, error)
+	StartTTLWatcher(ctx context.Context, log *logan.Entry, interval time.Duration)
 }

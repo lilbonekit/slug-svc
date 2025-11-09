@@ -33,7 +33,11 @@ func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
 	if attrs.Slug != nil && strings.TrimSpace(*attrs.Slug) != "" {
 		slug = strings.TrimSpace(*attrs.Slug)
 	} else {
-		slug = slugid.Generate(6)
+		slug, err = slugid.Generate(6)
+		if err != nil {
+			ape.RenderErr(w, newError(http.StatusInternalServerError, "internal_error", "failed to generate slug"))
+			return
+		}
 	}
 
 	created, err := h.LinksRepo.Create(r.Context(), repo.Link{

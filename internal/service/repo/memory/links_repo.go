@@ -7,11 +7,17 @@ import (
 	"time"
 
 	"github.com/lilbonekit/slug-svc/internal/service/repo"
+	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type linksRepo struct {
 	mu    sync.RWMutex
 	store map[string]repo.Link
+}
+
+func (r *linksRepo) StartTTLWatcher(ctx context.Context, log *logan.Entry, interval time.Duration) {
+	// TODO: Implement if needed
+	panic("unimplemented")
 }
 
 func New() repo.LinksRepo {

@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/google/jsonapi"
 	"gitlab.com/distributed_lab/ape"
+	"gitlab.com/distributed_lab/ape/problems"
 
 	"github.com/lilbonekit/slug-svc/internal/service/domain"
 	"github.com/lilbonekit/slug-svc/internal/service/repo"
@@ -17,25 +20,26 @@ import (
 func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.Bind(r)
 	if err != nil {
-		ape.RenderErr(w, newError(http.StatusBadRequest, "invalid_request", err.Error()))
+		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
 
 	attrs := req.Data.Attributes
-
 	targetURL := strings.TrimSpace(*attrs.TargetUrl)
+
 	if err := domain.ValidateTargetURL(targetURL); err != nil {
-		ape.RenderErr(w, newError(http.StatusBadRequest, "invalid_url", err.Error()))
+		ape.RenderErr(w, problems.BadRequest(errors.New("invalid target_url"))...)
 		return
 	}
 
-	slug := ""
+	var slug string
 	if attrs.Slug != nil && strings.TrimSpace(*attrs.Slug) != "" {
 		slug = strings.TrimSpace(*attrs.Slug)
 	} else {
 		slug, err = slugid.Generate(6)
 		if err != nil {
-			ape.RenderErr(w, newError(http.StatusInternalServerError, "internal_error", "failed to generate slug"))
+			Log(r).WithError(err).Error("failed to generate slug")
+			ape.RenderErr(w, []*jsonapi.ErrorObject{problems.InternalError()}...)
 			return
 		}
 	}
@@ -45,14 +49,17 @@ func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
 		TargetURL: targetURL,
 		TTL:       attrs.Ttl.Get(),
 	})
-	if err != nil {
-		if errors.Is(err, repo.ErrSlugExists) {
-			ape.RenderErr(w, newError(http.StatusConflict, "slug_exists", "slug already exists"))
-			return
-		}
 
-		Log(r).WithError(err).Error("failed to create link")
-		ape.RenderErr(w, newError(http.StatusInternalServerError, "internal_error", "failed to create link"))
+	if errors.Is(err, repo.ErrSlugExists) {
+		validationErr := validation.Errors{
+			"slug": errors.New("slug already exists"),
+		}.Filter()
+
+		if validationErr != nil {
+			ape.RenderErr(w, problems.BadRequest(validationErr)...)
+		} else {
+			ape.RenderErr(w, problems.BadRequest(errors.New("slug already exists"))...)
+		}
 		return
 	}
 

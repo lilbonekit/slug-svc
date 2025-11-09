@@ -3,41 +3,41 @@ package requests
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/lilbonekit/slug-svc/internal/service/domain"
+	"github.com/lilbonekit/slug-svc/resources"
 )
 
-type CreateLinkRequest struct {
-	TargetURL string `json:"target_url"`
-	Slug      string `json:"slug,omitempty"`
-	TTL       *int64 `json:"ttl,omitempty"`
-}
+func Bind(r *http.Request) (*resources.CreateLinkRequest, error) {
+	var req resources.CreateLinkRequest
 
-type CreateLinkResponse struct {
-	Slug string `json:"slug"`
-	URL  string `json:"url"`
-}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
 
-// Bind decodes + validates JSON body
-func (r *CreateLinkRequest) Bind(req *http.Request) error {
-	if err := json.NewDecoder(req.Body).Decode(r); err != nil {
-		return errors.New("invalid JSON body")
+	if err := dec.Decode(&req); err != nil {
+		return nil, fmt.Errorf("invalid JSON body: %w", err)
 	}
 
-	r.TargetURL = strings.TrimSpace(r.TargetURL)
-	if r.TargetURL == "" {
-		return errors.New("target_url is required")
+	attrs := req.Data.Attributes
+
+	if attrs.TargetUrl == nil || strings.TrimSpace(*attrs.TargetUrl) == "" {
+		return nil, errors.New("target_url is required")
 	}
 
-	if err := domain.ValidateTargetURL(r.TargetURL); err != nil {
-		return err
+	url := strings.TrimSpace(*attrs.TargetUrl)
+	if err := domain.ValidateTargetURL(url); err != nil {
+		return nil, err
+	}
+	attrs.TargetUrl = &url
+
+	if attrs.Slug != nil {
+		slug := strings.TrimSpace(*attrs.Slug)
+		attrs.Slug = &slug
 	}
 
-	if r.Slug != "" {
-		r.Slug = strings.TrimSpace(r.Slug)
-	}
-
-	return nil
+	req.Data.Attributes = attrs
+	return &req, nil
 }

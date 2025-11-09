@@ -7,28 +7,39 @@ import (
 
 	"gitlab.com/distributed_lab/ape"
 
+	"github.com/lilbonekit/slug-svc/internal/service/domain"
 	"github.com/lilbonekit/slug-svc/internal/service/repo"
 	"github.com/lilbonekit/slug-svc/internal/service/requests"
 	"github.com/lilbonekit/slug-svc/internal/service/slugid"
+	"github.com/lilbonekit/slug-svc/resources"
 )
 
 func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
-	var req requests.CreateLinkRequest
-
-	if err := req.Bind(r); err != nil {
-		ape.RenderErr(w, newError(http.StatusBadRequest, "invalid_json", err.Error()))
+	req, err := requests.Bind(r)
+	if err != nil {
+		ape.RenderErr(w, newError(http.StatusBadRequest, "invalid_request", err.Error()))
 		return
 	}
 
-	slug := req.Slug
-	if slug == "" {
+	attrs := req.Data.Attributes
+
+	targetURL := strings.TrimSpace(*attrs.TargetUrl)
+	if err := domain.ValidateTargetURL(targetURL); err != nil {
+		ape.RenderErr(w, newError(http.StatusBadRequest, "invalid_url", err.Error()))
+		return
+	}
+
+	slug := ""
+	if attrs.Slug != nil && strings.TrimSpace(*attrs.Slug) != "" {
+		slug = strings.TrimSpace(*attrs.Slug)
+	} else {
 		slug = slugid.Generate(6)
 	}
 
 	created, err := h.LinksRepo.Create(r.Context(), repo.Link{
 		Slug:      slug,
-		TargetURL: req.TargetURL,
-		TTL:       req.TTL,
+		TargetURL: targetURL,
+		TTL:       attrs.Ttl.Get(),
 	})
 	if err != nil {
 		if errors.Is(err, repo.ErrSlugExists) {
@@ -37,13 +48,21 @@ func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
 		}
 
 		Log(r).WithError(err).Error("failed to create link")
-		ape.RenderErr(w, newError(http.StatusInternalServerError, "internal_error", "failed to create"))
+		ape.RenderErr(w, newError(http.StatusInternalServerError, "internal_error", "failed to create link"))
 		return
 	}
 
-	base := strings.TrimRight(h.BaseURL, "/")
-	ape.Render(w, requests.CreateLinkResponse{
-		Slug: created.Slug,
-		URL:  base + "/" + created.Slug,
+	resp := resources.NewLink(resources.LinkAttributes{
+		Slug:      created.Slug,
+		TargetUrl: created.TargetURL,
+		Ttl:       *resources.NewNullableInt64(created.TTL),
 	})
+	resp.Id = resources.PtrString(created.Slug)
+	resp.Type = resources.PtrString("link")
+
+	base := strings.TrimRight(h.BaseURL, "/")
+	location := base + "/" + created.Slug
+
+	w.Header().Set("Location", location)
+	ape.Render(w, resp)
 }

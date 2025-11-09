@@ -6,24 +6,40 @@ post:
   requestBody:
     required: true
     content:
-      application/json:
+      application/vnd.api+json:
         schema:
           type: object
+          required:
+            - data
           properties:
-            target_url:
-              type: string
-              example: 'https://solarity.dev'
-            slug:
-              type: string
-              example: 'custom-slug'
-            ttl:
-              type: integer
-              example: 3600
+            data:
+              type: object
+              required:
+                - type
+                - attributes
+              properties:
+                type:
+                  type: string
+                  enum: [link]
+                attributes:
+                  type: object
+                  properties:
+                    target_url:
+                      type: string
+                      example: 'https://solarity.dev'
+                    slug:
+                      type: string
+                      example: 'custom-slug'
+                    ttl:
+                      type: integer
+                      format: int64
+                      nullable: true
+                      example: 3600
   responses:
-    '200':
+    '201':
       description: Successful creation
       content:
-        application/json:
+        application/vnd.api+json:
           schema:
             $ref: '#/components/schemas/Link'
     '409':

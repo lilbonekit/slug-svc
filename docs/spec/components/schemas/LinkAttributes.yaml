@@ -1,0 +1,20 @@
+type: object
+required:
+  - slug
+  - target_url
+properties:
+  slug:
+    type: string
+    example: 'aB4pQk'
+  target_url:
+    type: string
+    example: 'https://solarity.dev'
+  created_at:
+    type: string
+    description: ISO 8601 date-time string
+    example: '2025-11-05T10:29:34Z'
+  ttl:
+    type: integer
+    format: int64
+    nullable: true
+    example: 3600

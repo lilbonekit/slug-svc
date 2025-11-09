@@ -2,7 +2,6 @@ get:
   tags:
     - Links
   summary: Resolve slug and redirect
-  description: Redirects to the original target URL
   operationId: resolveLink
   parameters:
     - name: slug
@@ -11,6 +10,12 @@ get:
       schema:
         type: string
   responses:
+    '200':
+      description: Link resolved successfully
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Link'
     '302':
       description: Redirect
       headers:

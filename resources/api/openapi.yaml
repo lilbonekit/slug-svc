@@ -1,0 +1,170 @@
+openapi: 3.0.0
+info:
+  description: ""
+  title: slug-svc
+  version: 1.0.0
+servers:
+- description: Slug Service Local
+  url: https://localhost:8080
+paths:
+  /integrations/slug-svc/{slug}:
+    get:
+      operationId: resolveLink
+      parameters:
+      - explode: false
+        in: path
+        name: slug
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: "#/components/schemas/Link"
+          description: Link resolved successfully
+        "302":
+          description: Redirect
+          headers:
+            Location:
+              description: Target URL
+              explode: false
+              schema:
+                type: string
+              style: simple
+        "404":
+          description: Link not found
+      summary: Resolve slug and redirect
+      tags:
+      - Links
+  /integrations/slug-svc/v1/links:
+    post:
+      operationId: createLink
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: "#/components/schemas/createLink_request"
+        required: true
+      responses:
+        "201":
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: "#/components/schemas/Link"
+          description: Successful creation
+        "409":
+          description: Slug already exists
+        "500":
+          description: Internal server error
+      summary: Create new short link
+      tags:
+      - Links
+components:
+  parameters:
+    pageLimitParam:
+      explode: true
+      in: query
+      name: "page[limit]"
+      required: false
+      schema:
+        default: 15
+        description: Numbers of items per page to return.
+        maximum: 100
+        minimum: 1
+        type: integer
+      style: form
+    pageNumberParam:
+      description: The number of a page to return.
+      explode: true
+      in: query
+      name: "page[number]"
+      required: false
+      schema:
+        type: integer
+      style: form
+    sortingParam:
+      explode: true
+      in: query
+      name: "page[order]"
+      required: false
+      schema:
+        default: desc
+        description: "Order of records on the page. If sortingParam is not specified,\
+          \ order of records is by default sorted by ID."
+        enum:
+        - asc
+        - desc
+        type: string
+      style: form
+  schemas:
+    Link:
+      properties:
+        id:
+          example: abc123
+          type: string
+        type:
+          enum:
+          - link
+          type: string
+        attributes:
+          $ref: "#/components/schemas/LinkAttributes"
+      required:
+      - attributes
+      type: object
+    LinkAttributes:
+      properties:
+        slug:
+          example: aB4pQk
+          type: string
+        target_url:
+          example: https://solarity.dev
+          type: string
+        created_at:
+          description: ISO 8601 date-time string
+          example: 2025-11-05T10:29:34Z
+          type: string
+        ttl:
+          example: 3600
+          format: int64
+          nullable: true
+          type: integer
+      required:
+      - slug
+      - target_url
+      type: object
+    createLink_request_data_attributes:
+      properties:
+        target_url:
+          example: https://solarity.dev
+          type: string
+        slug:
+          example: custom-slug
+          type: string
+        ttl:
+          example: 3600
+          format: int64
+          nullable: true
+          type: integer
+      type: object
+    createLink_request_data:
+      properties:
+        type:
+          enum:
+          - link
+          type: string
+        attributes:
+          $ref: "#/components/schemas/createLink_request_data_attributes"
+      required:
+      - attributes
+      - type
+      type: object
+    createLink_request:
+      properties:
+        data:
+          $ref: "#/components/schemas/createLink_request_data"
+      required:
+      - data
+      type: object
